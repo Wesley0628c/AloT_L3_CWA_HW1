@@ -9,6 +9,7 @@ let allStations = [];
 let autoRefreshTimer = null;
 let activeOverlay = "temp";
 let activeViewMode = "markers"; // "markers" | "heatmap" | "cluster"
+let tempChart = null; // Chart.js Instance
 
 // Verified Public Weather Tile Overlay URLs (Zero Auth Required, maxZoom 18)
 const WEATHER_TILE_LAYERS = {
@@ -36,12 +37,14 @@ const WEATHER_TILE_LAYERS = {
 
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
+    initTemperatureChart();
     fetchTemperatureData();
+    fetchForecastChartData();
     setupEventListeners();
 });
 
 /**
- * Initialize Leaflet Map centered on Taiwan with explicit min/max zoom bounds
+ * Initialize Leaflet Map centered on Taiwan
  */
 function initMap() {
     map = L.map('map', {
@@ -64,7 +67,6 @@ function initMap() {
 
 /**
  * Switch Weather Overlay (Wind, Temp, Rain, Clouds)
- * NOTE: Weather overlay choice ONLY affects the map background, NEVER overrides activeViewMode!
  */
 function switchWeatherOverlay(overlayType) {
     activeOverlay = overlayType;
@@ -72,7 +74,6 @@ function switchWeatherOverlay(overlayType) {
     const layerInfo = WEATHER_TILE_LAYERS[overlayType];
     if (!layerInfo) return;
 
-    // Switch Base Tile Layer if needed
     if (baseTileLayer && layerInfo.base) {
         map.removeLayer(baseTileLayer);
         baseTileLayer = L.tileLayer(layerInfo.base, {
@@ -82,13 +83,11 @@ function switchWeatherOverlay(overlayType) {
         }).addTo(map);
     }
 
-    // Remove existing overlay if present
     if (activeWeatherTileLayer) {
         map.removeLayer(activeWeatherTileLayer);
         activeWeatherTileLayer = null;
     }
 
-    // Add Overlay Tile Layer
     if (layerInfo.overlayUrl) {
         activeWeatherTileLayer = L.tileLayer(layerInfo.overlayUrl, {
             opacity: 0.75,
@@ -98,7 +97,6 @@ function switchWeatherOverlay(overlayType) {
         }).addTo(map);
     }
 
-    // Update active button state
     document.querySelectorAll('.layer-btn').forEach(btn => {
         if (btn.dataset.overlay === overlayType) {
             btn.classList.add('active');
@@ -107,7 +105,6 @@ function switchWeatherOverlay(overlayType) {
         }
     });
 
-    // Re-render current view mode without changing user's view mode selection!
     renderVisualization();
 }
 
@@ -143,10 +140,103 @@ async function fetchTemperatureData(forceRefresh = false) {
 }
 
 /**
+ * Module 14: Initialize Chart.js MinT / MaxT Line Chart
+ */
+function initTemperatureChart() {
+    const ctx = document.getElementById('tempLineChart').getContext('2d');
+    tempChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['北部地區', '中部地區', '南部地區', '東部地區'],
+            datasets: [
+                {
+                    label: '最高溫 MaxT (°C)',
+                    data: [31.2, 31.7, 33.0, 32.2],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: '最低溫 MinT (°C)',
+                    data: [19.2, 11.9, 18.1, 16.5],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#f8fafc', font: { size: 10 } }
+                }
+            },
+            scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 10 } } },
+                y: { ticks: { color: '#94a3b8', font: { size: 10 } } }
+            }
+        }
+    });
+}
+
+/**
+ * Fetch Regional Forecast Chart Data from SQLite Backend
+ */
+async function fetchForecastChartData() {
+    try {
+        const response = await fetch('/api/forecasts/chart');
+        if (!response.ok) return;
+        const data = await response.json();
+        const forecasts = data.forecasts || [];
+
+        if (forecasts.length > 0 && tempChart) {
+            const labels = forecasts.map(f => f.regionName);
+            const maxTs = forecasts.map(f => f.maxT);
+            const minTs = forecasts.map(f => f.minT);
+
+            tempChart.data.labels = labels;
+            tempChart.data.datasets[0].data = maxTs;
+            tempChart.data.datasets[1].data = minTs;
+            tempChart.update();
+        }
+    } catch (e) {
+        console.warn("Forecast chart update skipped:", e);
+    }
+}
+
+/**
+ * Module 10 & 12: Run Custom SQL SELECT Query on SQLite Database
+ */
+async function runCustomSqlQuery() {
+    const queryInput = document.getElementById("sql-input-query").value.trim();
+    const resultBox = document.getElementById("sql-result-output");
+
+    resultBox.innerText = "⏳ 執行 SQL 查詢中...";
+
+    try {
+        const url = `/api/forecasts/sql-query?query=${encodeURIComponent(queryInput)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) {
+            resultBox.innerText = `❌ SQL 語法錯誤: ${data.detail || 'Query Failed'}`;
+            return;
+        }
+
+        resultBox.innerText = `✅ [SQL Success] 共 ${data.count} 筆記錄:\n` + JSON.stringify(data.results, null, 2);
+    } catch (err) {
+        resultBox.innerText = `❌ 查詢失敗: ${err.message}`;
+    }
+}
+
+/**
  * Master Render Switcher (Markers vs Heatmap vs Cluster)
  */
 function renderVisualization() {
-    // Clear previous layers
     stationLayerGroup.clearLayers();
     if (heatmapLayer) {
         map.removeLayer(heatmapLayer);
@@ -346,8 +436,8 @@ function setupEventListeners() {
     document.getElementById("search-input").addEventListener("input", renderVisualization);
     document.getElementById("toggle-labels").addEventListener("change", renderVisualization);
     document.getElementById("refresh-btn").addEventListener("click", () => fetchTemperatureData(true));
+    document.getElementById("btn-run-sql").addEventListener("click", runCustomSqlQuery);
 
-    // View Mode Switcher Buttons (Markers / Heatmap / Cluster)
     document.querySelectorAll('.view-mode-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             activeViewMode = e.currentTarget.dataset.mode;
@@ -357,7 +447,6 @@ function setupEventListeners() {
         });
     });
 
-    // Weather Layer Switcher Buttons (Wind / Temp / Rain / Clouds)
     document.querySelectorAll('.layer-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const overlayType = e.currentTarget.dataset.overlay;
@@ -365,12 +454,10 @@ function setupEventListeners() {
         });
     });
 
-    // Sidebar RWD Toggle
     document.getElementById("toggle-sidebar-btn").addEventListener("click", () => {
         document.getElementById("sidebar").classList.toggle("collapsed");
     });
 
-    // Auto Refresh Toggle
     const autoRefreshToggle = document.getElementById("toggle-auto-refresh");
     autoRefreshToggle.addEventListener("change", () => {
         if (autoRefreshToggle.checked) {

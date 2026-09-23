@@ -171,7 +171,7 @@ body {
 
 /* Sidebar Controls */
 .sidebar {
-    width: 330px;
+    width: 360px;
     background: var(--card-bg);
     border-right: 1px solid var(--card-border);
     padding: 20px;
@@ -185,7 +185,7 @@ body {
 }
 
 .sidebar.collapsed {
-    margin-left: -330px;
+    margin-left: -360px;
 }
 
 .sidebar-header h3 {
@@ -259,6 +259,72 @@ body {
     font-size: 0.85rem;
 }
 
+/* Module 14: MinT / MaxT Chart Box */
+.chart-panel-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.chart-panel-box h4 {
+    font-size: 0.88rem;
+    color: #60a5fa;
+    margin-bottom: 10px;
+}
+
+.chart-container {
+    position: relative;
+    height: 180px;
+    width: 100%;
+}
+
+/* Module 10 & 12: SQL Query Console Box */
+.sql-console-box {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sql-console-box h4 {
+    font-size: 0.88rem;
+    color: #34d399;
+}
+
+.btn-run-sql {
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #34d399;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-run-sql:hover {
+    background: rgba(16, 185, 129, 0.4);
+}
+
+.sql-result-output {
+    background: #000000;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 8px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #34d399;
+    max-height: 140px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 .alert-box {
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.4);
@@ -279,7 +345,6 @@ body {
 }
 
 .hottest-stations-box {
-    margin-top: auto;
     background: rgba(15, 23, 42, 0.5);
     border: 1px solid var(--card-border);
     border-radius: 8px;

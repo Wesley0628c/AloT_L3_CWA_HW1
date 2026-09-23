@@ -83,12 +83,20 @@ flowchart TD
 詳細的階段性開發任務請參考 [TODO.md](TODO.md) 檔案：
 
 - [x] **系統架構規劃與設計文件** (`design.md`)
-- [ ] **Phase 1: MVP 核心功能**
-  - [ ] FastAPI CWA 資料擷取、過濾與 GeoJSON 端點 (`GET /api/temperature/latest`)
-  - [ ] Windy API + Leaflet 全台地圖顯示與 CWA 測站圖層渲染
-  - [ ] 氣溫色階圖例 (Legend) 與測站 Popup 資訊窗
-- [ ] **Phase 2: Dashboard 儀表板與互動增強**
-  - [ ] Windy 圖層切換器（風場 / 降雨 / 雲層 / 氣溫）
+
+## 🎯 五大關卡進度追蹤 (Five-Gate Progress Tracker)
+
+- [x] **Gate 1: Data Collection & JSON Pipeline** PASS ✅
+  - 擷取 CWA `F-C0032-001` 與 `O-A0001-001` 氣象資料並儲存為 `gate1_output.json`。
+- [x] **Gate 2: Database Persistence & SQLite Schema** PASS ✅
+  - 實作 `gate2_database.py`，支援 `UNIQUE(location_name, forecast_start)` 唯一約束與 `INSERT OR REPLACE`。
+  - 寫入全台 22 縣市預報與 823 個觀測站資料至 `data.db`，並通過 Python SQL SELECT 驗證。
+- [x] **Gate 3: Local Taiwan GIS Web & Interactive Visualization** PASS ✅
+  - 實作 Leaflet 1.9.4 + Windy 背景圖層 + 823 測站熱力圖/聚類與氣溫特報監測。
+- [x] **Gate 4: Real-time Line Charts & SQL Query Console** PASS ✅
+  - 整合 Chart.js 分區 MinT / MaxT 時間序列折線圖與動態 SQL 查詢終端機。
+- [x] **Gate 5: Automated Verification & GitHub Deployment** PASS ✅
+  - 通過 Browser Subagent 自動化整合測試並完成版本託管。
   - [ ] 縣市選單與測站名稱搜尋功能
   - [ ] 前端 5 分鐘自動刷新機制
 - [ ] **Phase 3: 高級視覺化**
