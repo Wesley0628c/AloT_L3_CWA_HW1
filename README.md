@@ -1,166 +1,104 @@
-# 🌤️ 台灣中央氣象署 (CWA) 氣溫廣播視覺化地圖 (Windy API + Leaflet)
+# 台灣氣象整合平台
 
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
-[![React / Next.js](https://img.shields.io/badge/Frontend-Next.js-000000.svg)](https://nextjs.org/)
-[![Windy API](https://img.shields.io/badge/Map-Windy%20Map%20Forecast-02b1f8.svg)](https://api.windy.com/)
-[![CWA OpenData](https://img.shields.io/badge/Data-CWA%20Open%20Data-orange.svg)](https://opendata.cwa.gov.tw/)
-[![Email](https://img.shields.io/badge/Email-Wesleycho0628%40gmail.com-red.svg)](mailto:Wesleycho0628@gmail.com)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+將中央氣象署全台測站觀測與六大地區一週預報整合到同一個網站。後端使用 FastAPI 與 SQLite，前端使用 Leaflet、Chart.js 和原生 JavaScript。
 
-本專案結合 **中央氣象署 (CWA) 開放資料 API**、**FastAPI 後端快取/正規化服務** 與 **Windy Map Forecast API + Leaflet 前端地圖圖層**，實現台灣即時氣溫廣播與氣象觀測數據動態視覺化地圖系統。
+![即時測站介面](assets/preview.png)
 
----
+![一週預報介面](assets/forecast.png)
 
-## 📌 目錄 (Table of Contents)
+## 啟動
 
-- [專案簡介 (Overview)](#-專案簡介-overview)
-- [核心目標 (Goal)](#-核心目標-goal)
-- [架構設計 (System Architecture)](#-架構設計-system-architecture)
-- [技術選型 (Recommended Tech Stack)](#-技術選型-recommended-tech-stack)
-- [開發代辦事項 (TODO List & Roadmap)](#-開發代辦事項-todo-list--roadmap)
-- [專案目錄結構 (Suggested Directory Structure)](#-專案目錄結構-suggested-directory-structure)
-- [環境變數設定 (Environment Variables)](#-環境變數設定-environment-variables)
-- [授權與貢獻 (License & Author)](#-授權與貢獻-license--author)
+建議 Python 3.11 或更新版本（亦通過本機 Python 3.9 測試）。
 
----
-
-## 📖 專案簡介 (Overview)
-
-![CWA 氣溫廣播視覺化地圖](assets/preview.png)
-
-在物聯網（AIoT）與智慧氣象應用中，專業的天氣地圖（如 Windy）能提供優異的氣候背景（風場、雲層、降雨、氣溫模型圖層），而中央氣象署（CWA）提供全台自動氣象站實體觀測資料。
-
-本專案將 **Windy 地圖作為天氣背景圖層**，並利用 Leaflet 在其上疊加 **CWA 實測氣溫圖層（圓形標籤、即時數值、測站彈出視窗 Popup 與熱力圖）**，提供精確且直觀的即時氣溫廣播地圖。
-
----
-
-## 🎯 核心目標 (Goal)
-
-1. **風場/天氣底圖與實測數據疊加**：以 Windy 動態風場地圖為底圖，於全台座標繪製 CWA 測站氣溫標籤。
-2. **顏色編碼 (Temperature Color Scale)**：依據氣溫高低（例如 `<10°C` 至 `>35°C`）以漸層色彩呈現，並隨附色階圖例 (Legend)。
-3. **測站詳細資訊彈出窗 (Popup)**：點擊測站顯示 測站名稱、縣市、鄉鎮、氣溫、相對濕度、風速與最新觀測時間。
-4. **自動更新與快取機制**：後端每 10 分鐘自動對接 CWA API，前端自動刷新保持最新觀測時間。
-5. **後端金鑰保護與數據清洗**：隱藏 CWA API Key，過濾無效測站數據（如 `-99` 缺值與極端異常值）。
-
----
-
-## 🏗️ 架構設計 (System Architecture)
-
-```mermaid
-flowchart TD
-    A[CWA OpenData 氣象局資料集] --> B[FastAPI 數據擷取服務]
-    B --> C[數據清洗與標準化 Filter & Validate]
-    C --> D[快取層 Cache: Memory / Redis]
-    D --> E[FastAPI REST / GeoJSON API]
-    E --> F[前端 React / Next.js]
-    F --> G[Windy Map Forecast API]
-    F --> H[Leaflet CWA 測站圖層 Overlay]
-    H --> I[測站標籤 / Popups / 色階圖例 / 熱力圖]
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
----
+在根目錄 `.env` 填入自己的 `CWA_API_KEY`，接著：
 
-## 🛠️ 技術選型 (Recommended Tech Stack)
-
-### 後端 (Backend)
-- **Python 3.11+**
-- **FastAPI**：高效能非同步 API 框架
-- **httpx**：非同步 HTTP 請求庫
-- **Pydantic**：資料結構驗證與模型
-- **APScheduler / Cron**：定期自動更新背景任務
-- **Redis**（可選）：分散式快取
-
-### 前端 (Frontend)
-- **Next.js / Vite + React + TypeScript**
-- **Windy Map Forecast API**：動態天氣地圖背景
-- **Leaflet 1.4.x**：客製化 CWA 測站 Marker、標籤與 Popup
-- **Leaflet.markercluster / Leaflet.heat**（可選）：圖層聚類與熱力圖渲染
-
----
-
-## 📋 開發代辦事項 (TODO List & Roadmap)
-
-詳細的階段性開發任務請參考 [TODO.md](TODO.md) 檔案：
-
-- [x] **系統架構規劃與設計文件** (`design.md`)
-
-## 🎯 五大關卡進度追蹤 (Five-Gate Progress Tracker)
-
-- [x] **Gate 1: Data Collection & JSON Pipeline** PASS ✅
-  - 擷取 CWA `F-C0032-001` 與 `O-A0001-001` 氣象資料並儲存為 `gate1_output.json`。
-- [x] **Gate 2: Database Persistence & SQLite Schema** PASS ✅
-  - 實作 `gate2_database.py`，支援 `UNIQUE(location_name, forecast_start)` 唯一約束與 `INSERT OR REPLACE`。
-  - 寫入全台 22 縣市預報與 823 個觀測站資料至 `data.db`，並通過 Python SQL SELECT 驗證。
-- [x] **Gate 3: Local Taiwan GIS Web & Interactive Visualization** PASS ✅
-  - 實作 Leaflet 1.9.4 + Windy 背景圖層 + 823 測站熱力圖/聚類與氣溫特報監測。
-- [x] **Gate 4: Real-time Line Charts & SQL Query Console** PASS ✅
-  - 整合 Chart.js 分區 MinT / MaxT 時間序列折線圖與動態 SQL 查詢終端機。
-- [x] **Gate 5: Automated Verification & GitHub Deployment** PASS ✅
-  - 通過 Browser Subagent 自動化整合測試並完成版本託管。
-  - [ ] 縣市選單與測站名稱搜尋功能
-  - [ ] 前端 5 分鐘自動刷新機制
-- [ ] **Phase 3: 高級視覺化**
-  - [ ] 全台氣溫場熱力圖模式 (Heatmap Overlay)
-  - [ ] 歷史氣溫時間軸滑桿 (Time Slider)
-- [ ] **Phase 4: 營運部署 (Production)**
-  - [ ] Redis 快取與 PostgreSQL/PostGIS 整合
-  - [ ] 部署至 Vercel (前端) + Render/Fly.io (後端)
-
-完整與詳細的工作項目請見 👉 **[TODO.md](TODO.md)**
-
----
-
-## 📁 專案目錄結構 (Suggested Directory Structure)
-
-```text
-cwa-windy-temperature/
-│
-├── README.md           # 專案主說明文件
-├── TODO.md             # 開發代辦事項清單
-├── design.md           # 系統架構設計規格書
-├── .gitignore          # Git 忽略檔案設定
-│
-├── backend/            # FastAPI 後端專案
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── routers/ (temperature.py, health.py)
-│   │   ├── services/ (cwa_client.py, temperature_service.py)
-│   │   └── schemas/ (temperature.py)
-│   ├── requirements.txt
-│   └── .env.example
-│
-└── frontend/           # React / Next.js 前端專案
-    ├── src/
-    │   ├── components/ (WindyMap.tsx, TemperatureLayer.tsx, TemperatureLegend.tsx)
-    │   ├── lib/ (windyLoader.ts, cwaApi.ts, colorScale.ts)
-    │   └── types/ (temperature.ts)
-    ├── package.json
-    └── .env.example
+```bash
+python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
----
+開啟 http://127.0.0.1:8000 。macOS/Linux 可執行 `./start_server.sh`；Windows 可執行 `start_server.bat`。啟動腳本需先完成套件安裝。
 
-## 🔐 環境變數設定 (Environment Variables)
+## 已整合功能
 
-### 後端 (`backend/.env`)
-```env
-CWA_API_KEY=your_cwa_api_key_here
-CWA_DATA_URL=https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0001-001
-CACHE_TTL_SECONDS=600
+- **即時測站**：`O-A0001-001` 自動站與 `O-A0003-001` 局屬站；測站數依當次 API 有效資料而定。
+- **一週預報**：`F-C0032-003` 六區預報；地區、日期選單，最高／最低溫折線圖，一週資料表、當日六區總覽與地圖。
+- **日期範圍**：使用台灣時區，只顯示今天起七天；更新資料時以交易替換預報，避免舊日期累積。
+- **搜尋**：縣市篩選，以及測站名稱、編號、縣市、鄉鎮搜尋。
+- **地圖**：測站標籤、熱力圖、聚類，深色／街道底圖與一致的七段溫度圖例。
+- **測站 Popup**：氣溫、濕度、風速、雨量、觀測時間；缺值明確顯示為無資料。
+- **排行與提示**：依目前篩選範圍顯示最高溫 Top 5、≥33°C／≤15°C 測站數。這是應用程式門檻提示，並非 CWA 官方特報。
+- **更新**：後端啟動後立即抓取，之後每 10 分鐘背景更新；前端每 5 分鐘刷新，可關閉並手動更新。
+- **資料狀態**：顯示最後成功更新時間、過期／部分資料狀態；失敗不冒充成功更新。
+- **歷史觀測**：成功更新的測站快照存入 SQLite，保留最近七天；拖動滑桿回看，支援返回最新觀測。歷史資料從啟動後開始累積，清單最多 1008 份。
+- **CSV 下載**：最新測站觀測、所選地區一週預報；UTF-8 BOM、CSV 引號處理與試算表公式跳脫。
+- **SQL 查詢**：唯讀 SELECT、最多 500 筆、執行成本限制。
+- **手機操作**：可收合控制面板，地圖與預報共用同一網站。
+
+預報的「均值」為 `(最高溫 + 最低溫) / 2`，不是實測日平均溫。熱力圖是測站氣溫權重與密度視覺化，不是氣象模型內插等值面。
+
+## Windy 天氣模型（選配）
+
+在 `.env` 設定自己的 `WINDY_API_KEY` 並重新啟動，即使用 Windy Map Forecast API，在同一張地圖上切換風場、氣溫模型、降雨及雲層，並保留 CWA 圓點圖層。
+
+未設定時使用一般 Leaflet 底圖，不會將海圖或衛星照片誤標為風場。Windy 需要有效的 Map Forecast API key 與允許的網域；此 key 依 SDK 設計會傳到瀏覽器，請設定網域限制。CWA key 僅留在後端。
+
+參考：[Windy 官方文件](https://api.windy.com/map-forecast/docs)。依其要求使用 Leaflet 1.4.0。未提供 Windy key 的環境只能驗證一般地圖路徑，無法驗證 Windy 帳號授權。
+
+## 設定
+
+| 環境變數 | 預設／用途 |
+|---|---|
+| `CWA_API_KEY` | 必填；從 CWA 開放資料平台取得 |
+| `CACHE_TTL_SECONDS` | `600`，最小 60 秒 |
+| `BACKGROUND_REFRESH` | `true`；測試可關閉 |
+| `DATABASE_PATH` | `backend/data.db`；可指定持久化磁碟位置 |
+| `WINDY_API_KEY` | 選填；Windy Map Forecast key |
+
+先讀根目錄 `.env`，再讀 `backend/.env`；既有環境變數優先。不可將 `.env` 或 API key 提交到 GitHub。
+
+## API
+
+| 路徑 | 功能 |
+|---|---|
+| `/api/health` | 程式與快取狀態 |
+| `/api/temperature/latest?refresh=true` | 最新觀測／強制更新 |
+| `/api/temperature/geojson` | GeoJSON |
+| `/api/temperature/stations/{station_id}` | 單站資料 |
+| `/api/temperature/export/csv` | 最新觀測下載 |
+| `/api/temperature/history` | 歷史快照索引 |
+| `/api/temperature/snapshot?at=...` | 指定快照 |
+| `/api/forecasts/regions` | 六大地區 |
+| `/api/forecasts/chart?region=中部地區` | 七天預報與更新狀態；`refresh=true` 強制更新 |
+| `/api/forecasts/table` | 同一來源的預報表格 |
+| `/api/forecasts/export/csv?region=中部地區` | 預報下載 |
+| `/api/forecasts/sql-query?query=SELECT...` | 唯讀查詢 |
+| `/docs` | FastAPI 互動式 API 文件 |
+
+## 資料與既有版本
+
+新增 `WeeklyForecasts`、`UpdateMetadata`、`ObservationSnapshots` 三張資料表。初始化不會刪除原有 `TemperatureForecasts`、`CountyForecasts`、`StationObservations`；新預報介面統一讀取 `WeeklyForecasts`，舊表仍可透過唯讀 SQL 查詢。
+
+執行中的 `backend/data.db` 不再提交到 Git。新安裝會自動建立資料庫；原有本機資料庫可繼續使用。舊版 `probe_cwa_api.py`、`gate2_database.py` 與 `gate1_output.json` 保留為作業流程參考，不是新版網站啟動所需步驟。
+
+## 驗證
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests -q
+node --check frontend/js/app.js
 ```
 
-### 前端 (`frontend/.env.local`)
-```env
-NEXT_PUBLIC_WINDY_API_KEY=your_windy_api_key_here
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-```
+測試以暫存 SQLite 與模擬 API 執行，不需要 CWA key；覆蓋日期範圍、零度／缺值、快取失敗、重啟備援、歷史保留、CSV、唯讀 SQL，以及 HTTP 端點。
 
----
+瀏覽器實際驗證紀錄與範圍見 [VALIDATION.md](VALIDATION.md)。GitHub Actions 會執行後端測試與 JavaScript 語法檢查。
 
-## 📜 授權與貢獻 (License & Author)
+## 部署範圍
 
-- **專案作者 (Author)**: [Wesley0628c](https://github.com/Wesley0628c)
-- **聯絡 Email**: [Wesleycho0628@gmail.com](mailto:Wesleycho0628@gmail.com)
-- **GitHub 儲存庫**: [https://github.com/Wesley0628c/AloT_L3_CWA_HW1](https://github.com/Wesley0628c/AloT_L3_CWA_HW1)
-- **授權條款 (License)**: 本專案採用 [MIT License](LICENSE) 授權方式。
+本專案可在本機或具備持久化磁碟的 Python 主機執行。GitHub 儲存庫用於版本管理與 CI；推送 GitHub 不會自動建立公開網站。GitHub Pages 無法執行此 Python 後端。當前版本採單一服務程序與 SQLite，未整合 Redis、PostgreSQL 或指定雲端服務。

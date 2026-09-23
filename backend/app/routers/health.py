@@ -1,21 +1,16 @@
+import time
 from fastapi import APIRouter
-from datetime import datetime
+from app.config import settings
+from app import database
 from app.services.temperature_service import temperature_service
 
-router = APIRouter(prefix="/api/health", tags=["health"])
+router = APIRouter(prefix='/api/health', tags=['health'])
 
-@router.get("")
-async def health_check():
-    """
-    Health check endpoint.
-    """
-    cache_ts = temperature_service._cache_timestamp
-    cached_time = datetime.fromtimestamp(cache_ts).isoformat() if cache_ts > 0 else None
-
-    return {
-        "status": "ok",
-        "service": "CWA Temperature Broadcast API",
-        "cwa_cache_status": "fresh" if cache_ts > 0 else "uninitialized",
-        "latest_cache_time": cached_time,
-        "cached_stations_count": len(temperature_service._cache_data)
-    }
+@router.get('')
+def health():
+    ts = temperature_service._cache_timestamp
+    fresh = bool(ts) and time.time()-ts < settings.CACHE_TTL_SECONDS and not temperature_service._failed
+    return {'status': 'ok', 'api_key_configured': bool(settings.CWA_API_KEY),
+            'cwa_cache_status': 'fresh' if fresh else 'stale' if ts else 'uninitialized',
+            'cached_stations_count': len(temperature_service._cache_data),
+            'forecast_updated_at': database.forecast_updated_at()}

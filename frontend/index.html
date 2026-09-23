@@ -1,191 +1,63 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台灣 CWA 即時氣溫廣播視覺化地圖 (Windy API + Leaflet + SQLite)</title>
-    <!-- Leaflet 1.9.4 CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet Marker Cluster CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
-        rel="stylesheet">
-    <!-- Chart.js CDN for MinT / MaxT Line Chart (Module 14) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台灣氣象整合平台｜即時測站・一週預報</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
-    <!-- Top Navigation Bar -->
-    <header class="navbar">
-        <div class="brand">
-            <button id="toggle-sidebar-btn" class="btn-sidebar-toggle" title="切換側邊欄">☰</button>
-            <span class="icon">⛅</span>
-            <div class="brand-text">
-                <h1>台灣 CWA 即時氣溫廣播視覺化</h1>
-                <p id="update-time">資料同步中...</p>
-            </div>
-        </div>
-        <div class="header-status">
-            <a href="/api/temperature/export/csv" target="_blank" class="btn-export" title="下載 CSV 檔案">📥 匯出 CSV</a>
-            <div class="status-badge">
-                <span class="pulse-dot"></span>
-                <span>系統運作正常</span>
-            </div>
-            <div class="station-count-badge">
-                <span>線上測站: </span>
-                <strong id="station-count">0</strong>
-            </div>
-            <button id="refresh-btn" class="btn-refresh">🔄 手動刷新</button>
-        </div>
-    </header>
-
-    <!-- Main Workspace Container -->
-    <div class="main-container">
-        <!-- Sidebar Controls & Dashboard Panels -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h3>🎛️ 地圖控制與 SQL 數據面板</h3>
-            </div>
-
-            <!-- 1. View Mode Switcher -->
-            <div class="control-group">
-                <label>🎨 視覺化呈現模式</label>
-                <div class="button-grid">
-                    <button class="view-mode-btn active" data-mode="markers">📍 測站標籤</button>
-                    <button class="view-mode-btn" data-mode="heatmap">🔥 氣溫熱力圖</button>
-                    <button class="view-mode-btn" data-mode="cluster" style="grid-column: span 2;">🧩 測站聚類
-                        (Cluster)</button>
-                </div>
-            </div>
-
-            <!-- 2. Windy Background Weather Layers -->
-            <div class="control-group">
-                <label>🗺️ Windy 背景圖層切換</label>
-                <div class="button-grid">
-                    <button class="layer-btn active" data-overlay="wind">💨 風速 (Wind)</button>
-                    <button class="layer-btn" data-overlay="temp">🌡️ 氣溫 (Temp)</button>
-                    <button class="layer-btn" data-overlay="rain">🌧️ 降雨 (Rain)</button>
-                    <button class="layer-btn" data-overlay="clouds">☁️ 雲層 (Clouds)</button>
-                </div>
-            </div>
-
-            <!-- 3. Region Filter & Search -->
-            <div class="control-group">
-                <label for="county-select">📍 縣市區域篩選</label>
-                <select id="county-select" class="form-control">
-                    <option value="ALL">全台灣 (All Regions)</option>
-                    <option value="臺北市">臺北市</option>
-                    <option value="新北市">新北市</option>
-                    <option value="基隆市">基隆市</option>
-                    <option value="桃園市">桃園市</option>
-                    <option value="新竹市">新竹市</option>
-                    <option value="新竹縣">新竹縣</option>
-                    <option value="苗栗縣">苗栗縣</option>
-                    <option value="臺中市">臺中市</option>
-                    <option value="彰化縣">彰化縣</option>
-                    <option value="南投縣">南投縣</option>
-                    <option value="雲林縣">雲林縣</option>
-                    <option value="嘉義市">嘉義市</option>
-                    <option value="嘉義縣">嘉義縣</option>
-                    <option value="臺南市">臺南市</option>
-                    <option value="高雄市">高雄市</option>
-                    <option value="屏東縣">屏東縣</option>
-                    <option value="宜蘭縣">宜蘭縣</option>
-                    <option value="花蓮縣">花蓮縣</option>
-                    <option value="臺東縣">臺東縣</option>
-                    <option value="澎湖縣">澎湖縣</option>
-                    <option value="金門縣">金門縣</option>
-                    <option value="連江縣">連江縣</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label for="search-input">🔍 測站名稱搜尋</label>
-                <input type="text" id="search-input" class="form-control" placeholder="輸入測站或鄉鎮名稱...">
-            </div>
-
-            <div class="control-group">
-                <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-labels" checked>
-                    <span>地圖放大時顯示數值標籤</span>
-                </label>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-auto-refresh" checked>
-                    <span>每 5 分鐘自動刷新</span>
-                </label>
-            </div>
-
-            <!-- 4. Module 14: MinT / MaxT Temperature Line Chart -->
-            <div class="chart-panel-box">
-                <h4>📈 分區最高/最低氣溫折線圖 (SQLite)</h4>
-                <div class="chart-container">
-                    <canvas id="tempLineChart"></canvas>
-                </div>
-            </div>
-
-            <!-- 5. Extreme Temperature Alerts -->
-            <div class="alert-box" id="alert-box">
-                <h4>⚠️ 氣溫特報與異常監測</h4>
-                <div class="alert-content" id="alert-content">讀取中...</div>
-            </div>
-
-            <!-- 6. Top 5 Hottest Stations -->
-            <div class="hottest-stations-box">
-                <h4>🔥 全台即時最高溫 Top 5</h4>
-                <ol id="hottest-list" class="hottest-list"></ol>
-            </div>
-
-            <!-- 7. Module 10 & 12: SQL Query Verification Console -->
-            <div class="sql-console-box">
-                <h4>💻 SQL 資料庫查詢驗證</h4>
-                <input type="text" id="sql-input-query" class="form-control"
-                    value="SELECT regionName, minT, maxT, avgT FROM TemperatureForecasts">
-                <button id="btn-run-sql" class="btn-run-sql">⚡ 執行 SQL 查詢</button>
-                <pre id="sql-result-output" class="sql-result-output">點擊上方按鈕執行 SQL 查詢...</pre>
-            </div>
-        </aside>
-
-        <!-- Leaflet Interactive Map Viewport -->
-        <main class="map-wrapper">
-            <div id="map" class="map-container"></div>
-            <!-- Temperature Color Gradient Legend -->
-            <div class="temp-legend">
-                <div class="legend-title">氣溫色階 (°C)</div>
-                <div class="legend-items">
-                    <div class="legend-item"><span class="color-box" style="background:#e53e3e;"></span> > 35°C (極高溫)
-                    </div>
-                    <div class="legend-item"><span class="color-box" style="background:#ed8936;"></span> 30°C ~ 35°C
-                        (高溫)</div>
-                    <div class="legend-item"><span class="color-box" style="background:#ecc94b;"></span> 25°C ~ 30°C
-                        (舒適)</div>
-                    <div class="legend-item"><span class="color-box" style="background:#38a169;"></span> 20°C ~ 25°C
-                        (稍涼)</div>
-                    <div class="legend-item"><span class="color-box" style="background:#319795;"></span> 15°C ~ 20°C
-                        (涼爽)</div>
-                    <div class="legend-item"><span class="color-box" style="background:#2b6cb0;"></span>
-                        < 15°C (低溫)</div>
-                    </div>
-                </div>
-        </main>
-    </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Leaflet Heatmap JS -->
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    <!-- Leaflet Marker Cluster JS -->
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <!-- Color Scale Utility -->
-    <script src="js/colorScale.js"></script>
-    <!-- Main Application Script -->
-    <script src="js/app.js"></script>
-</body>
-
-</html>
+<header class="navbar">
+ <div class="brand"><button id="toggle-sidebar-btn" class="btn-sidebar-toggle" aria-label="切換控制面板" aria-expanded="true">☰</button>
+ <div class="brand-text"><h1>⛅ 台灣氣象整合平台</h1><p>中央氣象署觀測與六大地區一週預報</p></div></div>
+ <div class="header-status"><span id="status-text" role="status">正在連線…</span><button id="refresh-btn" class="btn-refresh">↻ 更新資料</button></div>
+</header>
+<nav class="view-tabs" aria-label="資料模式">
+ <button class="view-tab active" data-view="stations" aria-pressed="true">📍 即時測站</button>
+ <button class="view-tab" data-view="forecast" aria-pressed="false">📈 一週預報</button>
+ <span id="update-time" aria-live="polite"></span>
+</nav>
+<div class="main-container">
+<aside class="sidebar" id="sidebar">
+ <div class="control-group"><label class="toggle-switch"><input type="checkbox" id="toggle-auto-refresh" checked>每 5 分鐘自動刷新</label></div>
+ <section id="station-controls" class="panel-stack">
+  <div class="sidebar-header"><h3>測站觀測 <small id="station-count">0 站</small></h3></div>
+  <div class="control-group"><label for="county-select">縣市篩選</label><select id="county-select" class="form-control"><option value="ALL">全台灣</option></select></div>
+  <div class="control-group"><label for="search-input">搜尋測站、編號或鄉鎮</label><input id="search-input" class="form-control" type="search" placeholder="例如：臺北、C0…"></div>
+  <div class="control-group"><label>地圖呈現</label><div class="button-grid">
+   <button class="view-mode-btn active" data-mode="markers">測站標籤</button><button class="view-mode-btn" data-mode="heatmap">氣溫熱力圖</button><button class="view-mode-btn" data-mode="cluster">測站聚類</button>
+  </div><label class="toggle-switch"><input id="toggle-labels" type="checkbox" checked>放大時顯示溫度數值</label></div>
+  <div class="control-group"><label for="history-range">歷史觀測（保留最近 7 天）</label>
+   <input id="history-range" type="range" min="0" max="0" value="0" disabled><span id="history-label">尚無歷史快照</span>
+   <button id="history-live" class="layer-btn">返回最新觀測</button><small>歷史資料從啟動服務後開始累積。</small></div>
+  <a id="station-export" class="btn-export" href="/api/temperature/export/csv">↓ 下載最新觀測 CSV</a>
+  <div class="alert-box"><h4>氣溫門檻提示</h4><p class="muted">依觀測值判斷，非中央氣象署官方特報。</p><div id="alert-content" class="alert-content">等待資料…</div></div>
+  <div class="hottest-stations-box"><h4>目前篩選範圍最高溫 Top 5</h4><ol id="hottest-list" class="hottest-list"></ol></div>
+ </section>
+ <section id="forecast-controls" class="panel-stack" hidden>
+  <div class="sidebar-header"><h3>六大地區一週預報</h3></div>
+  <div class="control-group"><label for="forecast-region">分析地區</label><select id="forecast-region" class="form-control"></select></div>
+  <div class="control-group"><label for="forecast-date">預報日期</label><select id="forecast-date" class="form-control"></select></div>
+  <p id="forecast-status" role="status"></p>
+  <div class="chart-panel-box"><h4 id="chart-title">一週高低溫走勢</h4><div class="chart-container"><canvas id="tempLineChart" aria-label="一週高低溫折線圖" role="img"></canvas></div></div>
+  <div class="table-panel"><h4>所選地區一週資料</h4><div class="table-scroll"><table><thead><tr><th>日期</th><th>最低</th><th>最高</th><th>均值*</th></tr></thead><tbody id="forecast-table"></tbody></table></div></div>
+  <div class="table-panel"><h4>所選日期六區總覽</h4><table><thead><tr><th>地區</th><th>最低</th><th>最高</th></tr></thead><tbody id="daily-table"></tbody></table></div>
+  <small>* 均值為最高與最低溫的算術平均，非實測日平均溫。</small>
+  <a id="forecast-export" class="btn-export" href="/api/forecasts/export/csv">↓ 下載所選地區預報 CSV</a>
+ </section>
+ <section class="control-group"><label>背景地圖</label><div class="button-grid" id="base-controls"><button class="layer-btn active" data-base="dark">深色底圖</button><button class="layer-btn" data-base="street">街道底圖</button></div>
+  <div id="weather-controls" hidden><div class="button-grid"><button class="weather-btn layer-btn" data-overlay="wind">風場</button><button class="weather-btn layer-btn" data-overlay="temp">氣溫模型</button><button class="weather-btn layer-btn" data-overlay="rain">降雨</button><button class="weather-btn layer-btn" data-overlay="clouds">雲層</button></div></div>
+  <small id="map-note">背景地圖不代表氣象模型；圓點為 CWA 資料。</small>
+ </section>
+ <details class="sql-console-box"><summary>SQL 資料查詢</summary><label for="sql-input-query">唯讀查詢（最多 500 筆）</label><textarea id="sql-input-query" class="form-control" rows="3">SELECT * FROM WeeklyForecasts ORDER BY dataDate, regionName</textarea><button id="btn-run-sql" class="btn-run-sql">執行 SELECT</button><pre id="sql-result-output" class="sql-result-output" aria-live="polite">尚未執行查詢。</pre></details>
+</aside>
+<main class="map-wrapper"><div id="windy" class="map-container" aria-label="台灣氣象地圖"></div><div id="map-message" role="status" hidden></div><div class="temp-legend"><div class="legend-title">氣溫色階 °C</div><div id="legend-items" class="legend-items"></div></div></main>
+</div>
+<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<script src="js/colorScale.js"></script><script src="js/app.js"></script>
+</body></html>

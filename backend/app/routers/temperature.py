@@ -39,3 +39,17 @@ async def get_station_detail(station_id: str):
         if st["station_id"].lower() == station_id.lower():
             return st
     raise HTTPException(status_code=404, detail=f"Station ID '{station_id}' not found")
+
+
+@router.get('/history')
+def history():
+    from app.database import list_snapshots
+    return {'snapshots': list_snapshots(), 'retention_days': 7}
+
+@router.get('/snapshot')
+def snapshot(at: str):
+    from app.database import get_snapshot
+    data = get_snapshot(at)
+    if not data:
+        raise HTTPException(404, '找不到此觀測快照')
+    return {**data, 'historical': True}

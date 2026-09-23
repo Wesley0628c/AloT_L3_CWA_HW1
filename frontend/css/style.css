@@ -475,3 +475,46 @@ body {
     font-size: 0.8rem;
     color: var(--text-main);
 }
+/* Unified forecast and observations dashboard */
+[hidden] { display: none !important; }
+.navbar { min-height: 70px; height: auto; padding: 12px 20px; gap: 12px; }
+.view-tabs { display:flex; align-items:center; gap:10px; padding:10px 20px; border-bottom:1px solid var(--card-border); flex-wrap:wrap; }
+.view-tab { padding:10px 20px; border:1px solid var(--card-border); border-radius:8px; background:transparent; color:var(--text-main); cursor:pointer; }
+.view-tab.active { background:var(--primary); }
+#update-time, #status-text, small, .muted { font-size:.78rem; color:var(--text-muted); line-height:1.6; }
+#status-text { max-width:220px; }
+.sidebar { width:400px; flex-shrink:0; }
+.sidebar.collapsed { margin-left:-400px; }
+.panel-stack { display:flex; flex-direction:column; gap:16px; }
+.map-wrapper { min-width:0; }
+.chart-container { height:220px; }
+table { width:100%; border-collapse:collapse; font-size:.8rem; }
+th, td { padding:8px 4px; border-bottom:1px solid var(--card-border); text-align:right; }
+th:first-child, td:first-child { text-align:left; }
+.table-panel h4 { margin-bottom:8px; font-size:.9rem; }
+.table-scroll { overflow:auto; }
+#forecast-status { font-size:.82rem; line-height:1.7; }
+#history-range { width:100%; accent-color:var(--primary); }
+#history-label { font-size:.78rem; }
+#map-message { position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:800; padding:10px 16px; border-radius:8px; background:var(--card-bg); max-width:85%; font-size:.85rem; }
+.temp-legend { z-index:800; bottom:26px; right:12px; padding:10px; pointer-events:none; }
+button:disabled { opacity:.55; cursor:wait; }
+button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid #93c5fd; outline-offset:3px; }
+.sql-console-box summary { cursor:pointer; color:#34d399; }
+.sql-console-box > * { margin-bottom:8px; }
+@media(max-width:760px) {
+ .navbar { padding:10px; align-items:flex-start; }
+ .brand-text h1 { font-size:1rem; }
+ .brand-text p, #status-text { display:none; }
+ .btn-refresh { font-size:.75rem; padding:8px; }
+ .view-tabs { padding:8px 10px; gap:6px; }
+ .view-tab { padding:8px 12px; }
+ #update-time { flex-basis:100%; }
+ .sidebar { position:absolute; top:0; bottom:0; left:0; width:min(88vw,400px); background:#172238; z-index:900; }
+ .sidebar.collapsed { margin-left:-100vw; }
+ .map-wrapper { width:100%; }
+ .temp-legend { right:8px; bottom:28px; }
+}
+
+.map-wrapper { z-index:0; }
+.dark-map-tiles { filter:invert(100%) hue-rotate(180deg) brightness(.8) contrast(.9); }

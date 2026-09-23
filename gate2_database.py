@@ -10,12 +10,15 @@ import sqlite3
 import ssl
 import urllib.request
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "backend", "data.db")
-CWA_API_KEY = "CWA-58A4BB8E-5E3A-41EF-98A9-753DD0F1EF89"
+CWA_API_KEY = os.getenv("CWA_API_KEY", "")
 CWA_FORECAST_URL = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization={CWA_API_KEY}"
 
 def init_gate2_table():

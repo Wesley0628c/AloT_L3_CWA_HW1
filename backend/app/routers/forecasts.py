@@ -1,56 +1,30 @@
-"""
-FastAPI Router for SQLite Temperature Forecasts & SQL Queries (forecasts.py)
-"""
+from fastapi import APIRouter, HTTPException, Query, Response
+from app import database
+from app.services.forecast_service import forecast_service, records_csv
 
-from fastapi import APIRouter, HTTPException, Query
-from app.database import get_regional_forecasts, execute_raw_sql
+router = APIRouter(prefix='/api/forecasts', tags=['Forecasts'])
 
-router = APIRouter(prefix="/api/forecasts", tags=["Forecasts & SQL"])
+@router.get('/regions')
+def regions():
+    return {'regions': database.REGIONS}
 
-@router.get("/regions")
-async def get_forecast_regions():
-    """
-    Module 13: Get Available Forecast Regions
-    """
-    return {
-        "regions": ["北部地區", "中部地區", "南部地區", "東部地區"]
-    }
+@router.get('/chart')
+@router.get('/table')
+async def forecasts(region: str = 'ALL', refresh: bool = False):
+    if region != 'ALL' and region not in database.REGIONS:
+        raise HTTPException(400, '未知地區')
+    return await forecast_service.get(region, refresh)
 
-@router.get("/chart")
-async def get_forecast_chart_data(region: str = Query(default="ALL")):
-    """
-    Module 14: Get MinT / MaxT / AvgT Time-Series Data for Line Chart Rendering
-    """
-    data = get_regional_forecasts(region)
-    return {
-        "region": region,
-        "count": len(data),
-        "forecasts": data
-    }
+@router.get('/export/csv')
+async def export(region: str = 'ALL'):
+    data = await forecasts(region)
+    return Response(records_csv(data['forecasts'], ['regionName','dataDate','minT','maxT','avgT']),
+                    media_type='text/csv', headers={'Content-Disposition': 'attachment; filename=weekly_forecasts.csv'})
 
-@router.get("/table")
-async def get_forecast_table_data(region: str = Query(default="ALL")):
-    """
-    Module 15: Get Tabular Data Records for Table Component
-    """
-    data = get_regional_forecasts(region)
-    return {
-        "count": len(data),
-        "rows": data
-    }
-
-@router.get("/sql-query")
-async def run_sql_query(query: str = Query(..., example="SELECT * FROM TemperatureForecasts LIMIT 5")):
-    """
-    Module 10 & 12: Execute SQL SELECT Statement on SQLite DB
-    """
+@router.get('/sql-query')
+def query(query: str = Query(..., max_length=4000)):
     try:
-        results = execute_raw_sql(query)
-        return {
-            "query": query,
-            "status": "success",
-            "count": len(results),
-            "results": results
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        results = database.execute_raw_sql(query)
+        return {'count': len(results), 'results': results, 'limit': 500}
+    except Exception as exc:
+        raise HTTPException(400, str(exc)) from None

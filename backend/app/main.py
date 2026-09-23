@@ -1,45 +1,41 @@
-"""
-FastAPI Main Application (app/main.py)
-"""
-
-import os
+import asyncio
+import logging
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
-from app.routers import health, temperature, forecasts
+from app.config import settings, ROOT
 from app.database import init_database
+from app.routers import health, temperature, forecasts
+from app.services.temperature_service import temperature_service
+from app.services.forecast_service import forecast_service
 
-app = FastAPI(
-    title="Taiwan CWA Weather Broadcast API",
-    description="FastAPI Backend for CWA Weather Observations, SQLite Storage, and Windy Map Visualizations",
-    version="1.0.0"
-)
+async def refresh_loop():
+    while True:
+        results = await asyncio.gather(temperature_service.get_latest_stations(force_refresh=True),
+                                       forecast_service.refresh(force=True), return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                logging.getLogger(__name__).warning('Background refresh failed (%s)', type(result).__name__)
+        await asyncio.sleep(settings.CACHE_TTL_SECONDS)
 
-# Enable CORS for all origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Initialize SQLite Database on startup
-@app.on_event("startup")
-def on_startup():
+@asynccontextmanager
+async def lifespan(app):
     init_database()
+    task = asyncio.create_task(refresh_loop()) if settings.BACKGROUND_REFRESH else None
+    yield
+    if task:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
-# Include Routers
+app = FastAPI(title='台灣氣象整合平台', version='2.0.0', lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(temperature.router)
 app.include_router(forecasts.router)
 
-# Mount Frontend Static Directory
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
+@app.get('/api/config')
+def frontend_config():
+    # Windy Map Forecast keys are intentionally browser-visible. Never expose the CWA key.
+    return {'windy_api_key': settings.WINDY_API_KEY}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+app.mount('/', StaticFiles(directory=str(ROOT / 'frontend'), html=True), name='static')
