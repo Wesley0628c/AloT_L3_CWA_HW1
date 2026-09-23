@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣 CWA 即時氣溫廣播視覺化地圖 (Windy API + Leaflet)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <header class="navbar">
+        <div class="brand">
+            <span class="icon">🌤️</span>
+            <div class="brand-text">
+                <h1>台灣 CWA 即時氣溫廣播視覺化</h1>
+                <p>Central Weather Administration OpenData × Windy Map Forecast API</p>
+            </div>
+        </div>
+        <div class="header-status">
+            <div class="status-badge" id="cwa-status">
+                <span class="pulse-dot"></span>
+                <span id="update-time">讀取 CWA 數據中...</span>
+            </div>
+            <div class="station-count-badge">
+                測站數量: <strong id="station-count">0</strong>
+            </div>
+            <button class="btn btn-refresh" id="refresh-btn" title="立即手動更新 CWA 資料">
+                <span class="btn-icon">🔄</span> 更新資料
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>🎛️ 控制儀表板</h3>
+            </div>
+
+            <!-- County Filter -->
+            <div class="control-group">
+                <label for="county-select">📍 縣市區域篩選</label>
+                <select id="county-select" class="form-control">
+                    <option value="ALL">全台灣 (All Counties)</option>
+                    <option value="臺北市">臺北市 (Taipei)</option>
+                    <option value="新北市">新北市 (New Taipei)</option>
+                    <option value="基隆市">基隆市 (Keelung)</option>
+                    <option value="桃園市">桃園市 (Taoyuan)</option>
+                    <option value="新竹市">新竹市 (Hsinchu City)</option>
+                    <option value="新竹縣">新竹縣 (Hsinchu County)</option>
+                    <option value="苗栗縣">苗栗縣 (Miaoli)</option>
+                    <option value="臺中市">臺中市 (Taichung)</option>
+                    <option value="彰化縣">彰化縣 (Changhua)</option>
+                    <option value="南投縣">南投縣 (Nantou)</option>
+                    <option value="雲林縣">雲林縣 (Yunlin)</option>
+                    <option value="嘉義市">嘉義市 (Chiayi City)</option>
+                    <option value="嘉義縣">嘉義縣 (Chiayi County)</option>
+                    <option value="臺南市">臺南市 (Tainan)</option>
+                    <option value="高雄市">高雄市 (Kaohsiung)</option>
+                    <option value="屏東縣">屏東縣 (Pingtung)</option>
+                    <option value="宜蘭縣">宜蘭縣 (Yilan)</option>
+                    <option value="花蓮縣">花蓮縣 (Hualien)</option>
+                    <option value="臺東縣">臺東縣 (Taitung)</option>
+                    <option value="澎湖縣">澎湖縣 (Penghu)</option>
+                    <option value="金門縣">金門縣 (Kinmen)</option>
+                    <option value="連江縣">連江縣 (Lienchiang)</option>
+                </select>
+            </div>
+
+            <!-- Station Search -->
+            <div class="control-group">
+                <label for="search-input">🔍 搜尋氣象測站</label>
+                <input type="text" id="search-input" class="form-control" placeholder="輸入測站名稱 (如: 鞍部, 鞍山, 吉安)...">
+            </div>
+
+            <!-- Layer Switches -->
+            <div class="control-group">
+                <label>🗺️ Windy 背景圖層切換</label>
+                <div class="button-grid">
+                    <button class="layer-btn active" data-overlay="wind">💨 風速 (Wind)</button>
+                    <button class="layer-btn" data-overlay="temp">🌡️ 氣溫 (Temp)</button>
+                    <button class="layer-btn" data-overlay="rain">🌧️ 降雨 (Rain)</button>
+                    <button class="layer-btn" data-overlay="clouds">☁️ 雲層 (Clouds)</button>
+                </div>
+            </div>
+
+            <!-- Display Toggles -->
+            <div class="control-group">
+                <label>⚙️ 顯示設定</label>
+                <div class="checkbox-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-labels" checked>
+                        <span class="slider"></span>
+                        <span class="toggle-label">顯示氣溫數值標籤</span>
+                    </label>
+                </div>
+                <div class="checkbox-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-auto-refresh" checked>
+                        <span class="slider"></span>
+                        <span class="toggle-label">5分鐘自動更新</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Top Hottest Stations List -->
+            <div class="hottest-stations-box">
+                <h4>🔥 即時最高溫測站 Top 5</h4>
+                <ol id="hottest-list" class="hottest-list">
+                    <li>載入中...</li>
+                </ol>
+            </div>
+        </aside>
+
+        <!-- Map Section -->
+        <main class="map-wrapper">
+            <div id="map" class="map-container"></div>
+
+            <!-- Temperature Color Legend -->
+            <div class="temp-legend" id="temp-legend">
+                <div class="legend-title">氣溫色階 (°C)</div>
+                <div class="legend-items">
+                    <div class="legend-item"><span class="color-box" style="background:#2b6cb0;"></span> &lt; 10°C (嚴寒)</div>
+                    <div class="legend-item"><span class="color-box" style="background:#3182ce;"></span> 10–15°C (寒冷)</div>
+                    <div class="legend-item"><span class="color-box" style="background:#38a169;"></span> 15–20°C (涼爽)</div>
+                    <div class="legend-item"><span class="color-box" style="background:#ecc94b;"></span> 20–25°C (舒適)</div>
+                    <div class="legend-item"><span class="color-box" style="background:#ed8936;"></span> 25–30°C (溫暖)</div>
+                    <div class="legend-item"><span class="color-box" style="background:#e53e3e;"></span> 30–35°C (炎熱)</div>
+                    <div class="legend-item"><span class="color-box" style="background:#9b2c2c;"></span> &gt; 35°C (酷熱)</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Custom JS -->
+    <script src="js/colorScale.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
