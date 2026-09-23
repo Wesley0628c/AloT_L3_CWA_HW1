@@ -1,8 +1,35 @@
 // Global Application State
 let map;
+let baseTileLayer;
+let activeWeatherTileLayer = null;
 let stationLayerGroup;
 let allStations = [];
 let autoRefreshTimer = null;
+let activeOverlay = "wind";
+
+// Weather Tile Overlay URLs
+const WEATHER_TILE_LAYERS = {
+    wind: {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        overlayUrl: 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1', // Fallback wind tile
+        attribution: '&copy; OpenStreetMap & Weather Layers'
+    },
+    temp: {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        overlayUrl: 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
+        attribution: '&copy; CARTO & CWA Temperature'
+    },
+    rain: {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        overlayUrl: 'https://tile.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/1/1_1.png',
+        attribution: '&copy; RainViewer Radar & CARTO'
+    },
+    clouds: {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        overlayUrl: 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
+        attribution: '&copy; OpenWeatherMap Clouds & CARTO'
+    }
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
@@ -21,14 +48,46 @@ function initMap() {
         zoomControl: true
     });
 
-    // Dark Tile Layer (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+    // Default Base Dark Tile
+    baseTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors & CARTO',
         subdomains: 'abcd',
         maxZoom: 19
     }).addTo(map);
 
     stationLayerGroup = L.layerGroup().addTo(map);
+    switchWeatherOverlay('wind');
+}
+
+/**
+ * Switch Weather Overlay (Wind, Temp, Rain, Clouds)
+ */
+function switchWeatherOverlay(overlayType) {
+    activeOverlay = overlayType;
+
+    // Remove existing overlay if present
+    if (activeWeatherTileLayer) {
+        map.removeLayer(activeWeatherTileLayer);
+        activeWeatherTileLayer = null;
+    }
+
+    const layerInfo = WEATHER_TILE_LAYERS[overlayType];
+    if (layerInfo && layerInfo.overlayUrl) {
+        activeWeatherTileLayer = L.tileLayer(layerInfo.overlayUrl, {
+            opacity: 0.6,
+            maxZoom: 19,
+            attribution: layerInfo.attribution
+        }).addTo(map);
+    }
+
+    // Update active button state
+    document.querySelectorAll('.layer-btn').forEach(btn => {
+        if (btn.dataset.overlay === overlayType) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
 }
 
 /**
@@ -156,6 +215,14 @@ function setupEventListeners() {
     document.getElementById("toggle-labels").addEventListener("change", renderStationMarkers);
 
     document.getElementById("refresh-btn").addEventListener("click", () => fetchTemperatureData(true));
+
+    // Layer Switcher Buttons
+    document.querySelectorAll('.layer-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const overlayType = e.currentTarget.dataset.overlay;
+            switchWeatherOverlay(overlayType);
+        });
+    });
 
     // Auto Refresh Toggle
     const autoRefreshToggle = document.getElementById("toggle-auto-refresh");
