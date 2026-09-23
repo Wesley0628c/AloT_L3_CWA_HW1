@@ -7,10 +7,10 @@ let heatmapLayer = null;
 let clusterGroup = null;
 let allStations = [];
 let autoRefreshTimer = null;
-let activeOverlay = "wind";
+let activeOverlay = "temp";
 let activeViewMode = "markers"; // "markers" | "heatmap" | "cluster"
 
-// Verified Public Weather Tile Overlay URLs (Zero Auth Required)
+// Verified Public Weather Tile Overlay URLs (Zero Auth Required, maxZoom 18)
 const WEATHER_TILE_LAYERS = {
     wind: {
         base: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -19,8 +19,8 @@ const WEATHER_TILE_LAYERS = {
     },
     temp: {
         base: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-        overlayUrl: null, // Triggers live CWA station temperature heatmap overlay
-        attribution: '&copy; CWA Taiwan OpenData Temperature Gradient'
+        overlayUrl: null, // Pure dark base for temperature visualization
+        attribution: '&copy; Esri Canvas & CWA Temperature'
     },
     rain: {
         base: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
@@ -41,26 +41,30 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /**
- * Initialize Leaflet Map centered on Taiwan
+ * Initialize Leaflet Map centered on Taiwan with explicit min/max zoom bounds
  */
 function initMap() {
     map = L.map('map', {
         center: [23.7, 120.95],
         zoom: 8,
+        minZoom: 6,
+        maxZoom: 18,
         zoomControl: true
     });
 
     baseTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-        maxZoom: 16
+        minZoom: 6,
+        maxZoom: 18
     }).addTo(map);
 
     stationLayerGroup = L.layerGroup().addTo(map);
-    switchWeatherOverlay('wind');
+    switchWeatherOverlay('temp');
 }
 
 /**
  * Switch Weather Overlay (Wind, Temp, Rain, Clouds)
+ * NOTE: Weather overlay choice ONLY affects the map background, NEVER overrides activeViewMode!
  */
 function switchWeatherOverlay(overlayType) {
     activeOverlay = overlayType;
@@ -73,7 +77,8 @@ function switchWeatherOverlay(overlayType) {
         map.removeLayer(baseTileLayer);
         baseTileLayer = L.tileLayer(layerInfo.base, {
             attribution: 'Tiles &copy; Esri &mdash; Weather Overlay',
-            maxZoom: 16
+            minZoom: 6,
+            maxZoom: 18
         }).addTo(map);
     }
 
@@ -87,17 +92,10 @@ function switchWeatherOverlay(overlayType) {
     if (layerInfo.overlayUrl) {
         activeWeatherTileLayer = L.tileLayer(layerInfo.overlayUrl, {
             opacity: 0.75,
-            maxZoom: 19,
+            minZoom: 6,
+            maxZoom: 18,
             attribution: layerInfo.attribution
         }).addTo(map);
-    } else if (overlayType === 'temp') {
-        // Temperature overlay: automatically activate CWA station heatmap
-        activeViewMode = 'heatmap';
-        document.querySelectorAll('.view-mode-btn').forEach(b => {
-            if (b.dataset.mode === 'heatmap') b.classList.add('active');
-            else b.classList.remove('active');
-        });
-        renderVisualization();
     }
 
     // Update active button state
@@ -108,6 +106,9 @@ function switchWeatherOverlay(overlayType) {
             btn.classList.remove('active');
         }
     });
+
+    // Re-render current view mode without changing user's view mode selection!
+    renderVisualization();
 }
 
 /**
@@ -187,7 +188,7 @@ function getFilteredStations() {
 }
 
 /**
- * Mode 1: Render Markers Layer
+ * Mode 1: Render Station Markers Layer
  */
 function renderStationMarkers(filtered) {
     const showLabels = document.getElementById("toggle-labels").checked;
@@ -204,7 +205,7 @@ function renderStationMarkers(filtered) {
             weight: 1.5
         });
 
-        if (showLabels && map.getZoom() >= 9) {
+        if (showLabels && map.getZoom() >= 8) {
             const labelIcon = L.divIcon({
                 className: 'custom-temp-marker',
                 html: `<div style="border-color:${color};">${st.temperature_c}°</div>`,
@@ -220,12 +221,11 @@ function renderStationMarkers(filtered) {
 }
 
 /**
- * Mode 2: Render Heatmap Layer
+ * Mode 2: Render Temperature Heatmap Layer
  */
 function renderHeatmapLayer(filtered) {
     if (typeof L.heatLayer !== 'function') return;
 
-    // Convert temperature °C to intensity (normalized 0.0 to 1.0)
     const heatPoints = filtered.map(st => {
         const intensity = Math.max(0.1, Math.min(1.0, (st.temperature_c - 10) / 25));
         return [st.lat, st.lon, intensity];
@@ -234,7 +234,7 @@ function renderHeatmapLayer(filtered) {
     heatmapLayer = L.heatLayer(heatPoints, {
         radius: 25,
         blur: 15,
-        maxZoom: 12,
+        maxZoom: 18,
         gradient: {
             0.2: '#2b6cb0',
             0.4: '#38a169',
@@ -246,7 +246,7 @@ function renderHeatmapLayer(filtered) {
 }
 
 /**
- * Mode 3: Render Cluster Layer
+ * Mode 3: Render Station Cluster Layer
  */
 function renderClusterLayer(filtered) {
     if (typeof L.markerClusterGroup !== 'function') return;
@@ -347,7 +347,7 @@ function setupEventListeners() {
     document.getElementById("toggle-labels").addEventListener("change", renderVisualization);
     document.getElementById("refresh-btn").addEventListener("click", () => fetchTemperatureData(true));
 
-    // View Mode Switcher Buttons
+    // View Mode Switcher Buttons (Markers / Heatmap / Cluster)
     document.querySelectorAll('.view-mode-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             activeViewMode = e.currentTarget.dataset.mode;
@@ -357,7 +357,7 @@ function setupEventListeners() {
         });
     });
 
-    // Layer Switcher Buttons
+    // Weather Layer Switcher Buttons (Wind / Temp / Rain / Clouds)
     document.querySelectorAll('.layer-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const overlayType = e.currentTarget.dataset.overlay;
