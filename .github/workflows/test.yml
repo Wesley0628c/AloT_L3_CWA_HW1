@@ -15,4 +15,8 @@ jobs:
           node-version: '22'
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pytest tests -q
-      - run: node --check frontend/js/app.js
+      - name: Check browser modules
+        run: |
+          for file in frontend/js/*.js; do
+            node --input-type=module --check < "$file"
+          done

@@ -1,0 +1,146 @@
+{
+  "project": "AloT_L3_CWA_HW1",
+  "checked_at": "2026-09-23T12:37:44.609276+00:00",
+  "sources": {
+    "automatic": {
+      "endpoint": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0001-001",
+      "supported": true,
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 882407,
+      "count": 839,
+      "fields": {
+        "temperature_c": 839,
+        "humidity_percent": 839,
+        "wind_speed_mps": 835,
+        "wind_direction_deg": 835,
+        "weather": 839
+      },
+      "elapsed_ms": 1280
+    },
+    "bureau": {
+      "endpoint": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0003-001",
+      "supported": true,
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 440875,
+      "count": 351,
+      "fields": {
+        "temperature_c": 351,
+        "humidity_percent": 351,
+        "wind_speed_mps": 348,
+        "wind_direction_deg": 348,
+        "weather": 350
+      },
+      "elapsed_ms": 214
+    },
+    "rainfall": {
+      "endpoint": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0002-001",
+      "supported": true,
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 1154581,
+      "count": 1342,
+      "elapsed_ms": 248
+    },
+    "forecast": {
+      "endpoint": "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0032-003",
+      "supported": true,
+      "status": 200,
+      "content_type": "binary/octet-stream",
+      "bytes": 119283,
+      "count": 42,
+      "elapsed_ms": 553
+    },
+    "typhoon": {
+      "endpoint": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-005",
+      "supported": true,
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 5150,
+      "count": 1,
+      "elapsed_ms": 1179
+    },
+    "warnings": {
+      "endpoint": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-002",
+      "supported": true,
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 547,
+      "count": 0,
+      "elapsed_ms": 119
+    },
+    "radar": {
+      "endpoint": "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0058-006",
+      "supported": true,
+      "status": 200,
+      "content_type": "binary/octet-stream",
+      "bytes": 961,
+      "count": null,
+      "image_status": 200,
+      "image_dimensions": [
+        3600,
+        3600
+      ],
+      "bounds": [
+        [
+          20.5,
+          118.0
+        ],
+        [
+          26.5,
+          124.0
+        ]
+      ],
+      "elapsed_ms": 630
+    },
+    "dark_map": {
+      "endpoint": "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/8/110/213",
+      "supported": true,
+      "status": 200,
+      "content_type": "image/jpeg",
+      "bytes": 4750,
+      "elapsed_ms": 104
+    },
+    "street_map": {
+      "endpoint": "https://tile.openstreetmap.org/8/213/110.png",
+      "supported": true,
+      "status": 200,
+      "content_type": "image/png",
+      "bytes": 27550,
+      "elapsed_ms": 393
+    },
+    "boundaries": {
+      "endpoint": "https://wmts.nlsc.gov.tw/wmts/CITY/default/EPSG:3857/8/110/213",
+      "supported": true,
+      "status": 200,
+      "content_type": "image/png",
+      "bytes": 17409,
+      "elapsed_ms": 87
+    },
+    "rainviewer": {
+      "endpoint": "https://api.rainviewer.com/public/weather-maps.json",
+      "supported": true,
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 818,
+      "count": 13,
+      "tile_status": 200,
+      "elapsed_ms": 2572
+    },
+    "gfs_wind": {
+      "endpoint": "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl",
+      "supported": true,
+      "status": 200,
+      "format": "GRIB2 decoded: 10 m U/V",
+      "width": 141,
+      "height": 89,
+      "valid_at": "2026-09-23T12:00:00+00:00",
+      "elapsed_ms": 1783
+    },
+    "windy": {
+      "supported": false,
+      "reason": "Removed: no verified Windy Map Forecast credential; NOAA GFS supplies the supported wind model."
+    }
+  }
+}

@@ -14,6 +14,7 @@ from app import database
 from app.config import settings
 from app.main import app
 from app.services.cwa_client import cwa_client
+from app.services.weather_service import weather_service
 from app.services.forecast_service import ForecastService, forecast_service, parse_forecasts, records_csv
 from app.services.temperature_service import TemperatureService, temperature_service, parse_float
 
@@ -36,18 +37,6 @@ def raw_station(temp=28, name='測試站', observed=None):
             'WeatherElement':{'AirTemperature':temp,'RelativeHumidity':'80','WindSpeed':'2','Now':{'Precipitation':'0'}}}
 
 
-@pytest.fixture(autouse=True)
-def isolated(tmp_path, monkeypatch):
-    monkeypatch.setattr(database,'DB_PATH',str(tmp_path/'test.db'))
-    monkeypatch.setattr(settings,'BACKGROUND_REFRESH',False)
-    database.init_database()
-    async def nothing(*args, **kwargs): return None
-    async def empty(*args, **kwargs): return []
-    monkeypatch.setattr(cwa_client,'fetch_json',nothing)
-    monkeypatch.setattr(cwa_client,'fetch_automatic_stations',empty)
-    monkeypatch.setattr(cwa_client,'fetch_bureau_stations',empty)
-    temperature_service.__init__()
-    forecast_service.__init__()
 
 
 def test_forecast_parser_zero_duplicates_and_missing_values():
@@ -160,7 +149,7 @@ def test_http_routes_static_exports_geojson_history_and_error_states(monkeypatch
     monkeypatch.setattr(cwa_client,'fetch_automatic_stations',stations)
     with TestClient(app) as client:
         assert client.get('/').status_code==200
-        assert '即時測站' in client.get('/').text
+        assert '台灣即時氣象' in client.get('/').text
         assert client.get('/js/app.js').status_code==200
         assert len(client.get('/api/forecasts/regions').json()['regions'])==6
         data=client.get('/api/forecasts/chart?region=中部地區').json()
@@ -177,7 +166,7 @@ def test_http_routes_static_exports_geojson_history_and_error_states(monkeypatch
         assert client.get('/api/temperature/snapshot',params={'at':snapshots[0]['captured_at']}).json()['historical']
         assert client.get('/api/temperature/snapshot?at=absent').status_code==404
         assert client.get('/api/forecasts/sql-query',params={'query':'DROP TABLE WeeklyForecasts'}).status_code==400
-        assert 'CWA_API_KEY' not in client.get('/api/config').text
+        assert 'CWA_API_KEY' not in client.get('/api/weather/capabilities').text
         assert client.get('/api/health').status_code==200
 
 
@@ -218,6 +207,17 @@ def test_background_refresh_runs_both_sources_and_survives_failure(monkeypatch):
     monkeypatch.setattr(temperature_service,'get_latest_stations',observations)
     monkeypatch.setattr(forecast_service,'refresh',forecasts)
     monkeypatch.setattr(asyncio,'sleep',stop_after_cycle)
+    async def product(name): return {'available':False}
+    monkeypatch.setattr(weather_service,'get',product)
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(refresh_loop())
     assert calls==[('stations',True),('forecast',True),('sleep',settings.CACHE_TTL_SECONDS)]
+
+
+def test_invalid_wind_direction_and_trace_rain_are_not_real_measurements():
+    raw=raw_station()
+    raw['WeatherElement']['WindDirection']='-990'
+    raw['WeatherElement']['Now']['Precipitation']='-998'
+    parsed=TemperatureService()._parse_station(raw)
+    assert parsed['wind_direction_deg'] is None
+    assert parsed['precipitation_mm'] is None

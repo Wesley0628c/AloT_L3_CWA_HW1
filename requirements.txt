@@ -1,2 +1,8 @@
--r backend/requirements.txt
-requests>=2.28.0
+fastapi>=0.100.0
+uvicorn>=0.22.0
+httpx>=0.24.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+eccodes>=2.43,<3
+eccodeslib>=2.43,<3
+numpy>=1.24

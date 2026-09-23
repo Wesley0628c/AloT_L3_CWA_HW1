@@ -163,8 +163,12 @@ class TemperatureService:
             if wind_speed is not None and wind_speed < 0:
                 wind_speed = None
             wind_dir = parse_float(weather_elem.get("WindDirection"))
+            if wind_dir is not None and not 0 <= wind_dir <= 360:
+                wind_dir = None
 
             precip = parse_float(weather_elem.get("Now", {}).get("Precipitation"))
+            if precip is not None and precip < 0:
+                precip = None
             weather_str = weather_elem.get("Weather")
 
             return {

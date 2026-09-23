@@ -36,6 +36,7 @@ def init_database():
             minT REAL NOT NULL, maxT REAL NOT NULL, avgT REAL NOT NULL,
             PRIMARY KEY(regionName, dataDate), CHECK(minT <= maxT)
         );
+        CREATE TABLE IF NOT EXISTS ProductCache (name TEXT PRIMARY KEY, body TEXT NOT NULL, updated_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS UpdateMetadata (name TEXT PRIMARY KEY, updated_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS ObservationSnapshots (
             captured_at TEXT PRIMARY KEY, stations TEXT NOT NULL, count INTEGER NOT NULL,
@@ -101,3 +102,15 @@ def execute_raw_sql(sql_query):
             return int(calls[0] > 1000)
         conn.set_progress_handler(budget, 1000)
         return [dict(r) for r in conn.execute(sql_query).fetchmany(500)]
+
+
+def save_product(name, body, updated_at):
+    with connection() as conn:
+        conn.execute('INSERT OR REPLACE INTO ProductCache VALUES (?,?,?)',
+                     (name, json.dumps(body, ensure_ascii=False, allow_nan=False), updated_at))
+
+
+def get_product(name):
+    with connection(True) as conn:
+        row=conn.execute('SELECT body,updated_at FROM ProductCache WHERE name=?',(name,)).fetchone()
+    return {'body':json.loads(row['body']),'updated_at':row['updated_at']} if row else None
