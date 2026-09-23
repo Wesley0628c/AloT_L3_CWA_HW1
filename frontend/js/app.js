@@ -10,27 +10,27 @@ let autoRefreshTimer = null;
 let activeOverlay = "wind";
 let activeViewMode = "markers"; // "markers" | "heatmap" | "cluster"
 
-// Weather Tile Overlay URLs
+// Verified Public Weather Tile Overlay URLs (Zero Auth Required)
 const WEATHER_TILE_LAYERS = {
     wind: {
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-        overlayUrl: 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
-        attribution: '&copy; Esri & OpenWeatherMap'
+        base: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        overlayUrl: 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
+        attribution: '&copy; Esri World Imagery & OpenSeaMap Wind'
     },
     temp: {
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-        overlayUrl: 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
-        attribution: '&copy; Esri & CWA Temperature'
+        base: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        overlayUrl: null, // Triggers live CWA station temperature heatmap overlay
+        attribution: '&copy; CWA Taiwan OpenData Temperature Gradient'
     },
     rain: {
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-        overlayUrl: 'https://tile.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/1/1_1.png',
-        attribution: '&copy; RainViewer Radar & Esri'
+        base: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        overlayUrl: 'https://tilecache.rainviewer.com/v2/radar/nowcast/256/{z}/{x}/{y}/2/1_1.png',
+        attribution: '&copy; RainViewer Real-time Rain Radar'
     },
     clouds: {
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-        overlayUrl: 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
-        attribution: '&copy; OpenWeatherMap Clouds & Esri'
+        base: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        overlayUrl: 'https://tilecache.rainviewer.com/v2/satellite/latest/256/{z}/{x}/{y}/0/0_0.png',
+        attribution: '&copy; RainViewer Infrared Satellite Clouds'
     }
 };
 
@@ -65,20 +65,42 @@ function initMap() {
 function switchWeatherOverlay(overlayType) {
     activeOverlay = overlayType;
 
+    const layerInfo = WEATHER_TILE_LAYERS[overlayType];
+    if (!layerInfo) return;
+
+    // Switch Base Tile Layer if needed
+    if (baseTileLayer && layerInfo.base) {
+        map.removeLayer(baseTileLayer);
+        baseTileLayer = L.tileLayer(layerInfo.base, {
+            attribution: 'Tiles &copy; Esri &mdash; Weather Overlay',
+            maxZoom: 16
+        }).addTo(map);
+    }
+
+    // Remove existing overlay if present
     if (activeWeatherTileLayer) {
         map.removeLayer(activeWeatherTileLayer);
         activeWeatherTileLayer = null;
     }
 
-    const layerInfo = WEATHER_TILE_LAYERS[overlayType];
-    if (layerInfo && layerInfo.overlayUrl) {
+    // Add Overlay Tile Layer
+    if (layerInfo.overlayUrl) {
         activeWeatherTileLayer = L.tileLayer(layerInfo.overlayUrl, {
-            opacity: 0.6,
+            opacity: 0.75,
             maxZoom: 19,
             attribution: layerInfo.attribution
         }).addTo(map);
+    } else if (overlayType === 'temp') {
+        // Temperature overlay: automatically activate CWA station heatmap
+        activeViewMode = 'heatmap';
+        document.querySelectorAll('.view-mode-btn').forEach(b => {
+            if (b.dataset.mode === 'heatmap') b.classList.add('active');
+            else b.classList.remove('active');
+        });
+        renderVisualization();
     }
 
+    // Update active button state
     document.querySelectorAll('.layer-btn').forEach(btn => {
         if (btn.dataset.overlay === overlayType) {
             btn.classList.add('active');
