@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from app.services.temperature_service import temperature_service
 
 router = APIRouter(prefix="/api/temperature", tags=["temperature"])
@@ -19,6 +19,14 @@ async def get_temperature_geojson():
     Get latest CWA station temperature data formatted as GeoJSON for Leaflet overlay.
     """
     return await temperature_service.get_geojson()
+
+@router.get("/export/csv")
+async def export_temperature_csv():
+    """
+    Export all station temperature data as downloadable CSV.
+    """
+    csv_data = await temperature_service.export_csv()
+    return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=cwa_temperatures.csv"})
 
 @router.get("/stations/{station_id}")
 async def get_station_detail(station_id: str):

@@ -44,6 +44,16 @@ body {
     gap: 12px;
 }
 
+.btn-sidebar-toggle {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    font-size: 1.2rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 .brand .icon {
     font-size: 1.8rem;
 }
@@ -63,7 +73,7 @@ body {
 .header-status {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .status-badge {
@@ -88,9 +98,20 @@ body {
 }
 
 @keyframes pulse {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
 }
 
 .station-count-badge {
@@ -100,6 +121,24 @@ body {
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.82rem;
+}
+
+.btn-export {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+}
+
+.btn-export:hover {
+    background: rgba(245, 158, 11, 0.4);
 }
 
 .btn-refresh {
@@ -132,16 +171,21 @@ body {
 
 /* Sidebar Controls */
 .sidebar {
-    width: 320px;
+    width: 330px;
     background: var(--card-bg);
     border-right: 1px solid var(--card-border);
     padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     overflow-y: auto;
     backdrop-filter: blur(12px);
     z-index: 500;
+    transition: margin-left 0.3s ease;
+}
+
+.sidebar.collapsed {
+    margin-left: -330px;
 }
 
 .sidebar-header h3 {
@@ -185,7 +229,8 @@ body {
     gap: 8px;
 }
 
-.layer-btn {
+.layer-btn,
+.view-mode-btn {
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid var(--card-border);
     color: var(--text-main);
@@ -194,11 +239,16 @@ body {
     font-size: 0.8rem;
     cursor: pointer;
     transition: all 0.2s;
+    text-align: center;
 }
 
-.layer-btn.active, .layer-btn:hover {
+.layer-btn.active,
+.view-mode-btn.active,
+.layer-btn:hover,
+.view-mode-btn:hover {
     background: var(--primary);
     border-color: var(--primary);
+    color: #ffffff;
 }
 
 .toggle-switch {
@@ -207,6 +257,25 @@ body {
     gap: 10px;
     cursor: pointer;
     font-size: 0.85rem;
+}
+
+.alert-box {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.alert-box h4 {
+    font-size: 0.88rem;
+    color: #f87171;
+    margin-bottom: 6px;
+}
+
+.alert-content {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-main);
 }
 
 .hottest-stations-box {
@@ -292,7 +361,7 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
     color: #ffffff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
     border: 1.5px solid #ffffff;
     white-space: nowrap;
     text-align: center;

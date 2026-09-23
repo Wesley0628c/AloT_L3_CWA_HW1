@@ -3,9 +3,12 @@ let map;
 let baseTileLayer;
 let activeWeatherTileLayer = null;
 let stationLayerGroup;
+let heatmapLayer = null;
+let clusterGroup = null;
 let allStations = [];
 let autoRefreshTimer = null;
 let activeOverlay = "wind";
+let activeViewMode = "markers"; // "markers" | "heatmap" | "cluster"
 
 // Weather Tile Overlay URLs
 const WEATHER_TILE_LAYERS = {
@@ -41,14 +44,12 @@ document.addEventListener("DOMContentLoaded", () => {
  * Initialize Leaflet Map centered on Taiwan
  */
 function initMap() {
-    // Taiwan Center Coordinates: 23.7, 120.95
     map = L.map('map', {
         center: [23.7, 120.95],
         zoom: 8,
         zoomControl: true
     });
 
-    // Default Base Dark Tile (Esri World Dark Gray Canvas - Clean & Watermark-Free)
     baseTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
         maxZoom: 16
@@ -64,7 +65,6 @@ function initMap() {
 function switchWeatherOverlay(overlayType) {
     activeOverlay = overlayType;
 
-    // Remove existing overlay if present
     if (activeWeatherTileLayer) {
         map.removeLayer(activeWeatherTileLayer);
         activeWeatherTileLayer = null;
@@ -79,7 +79,6 @@ function switchWeatherOverlay(overlayType) {
         }).addTo(map);
     }
 
-    // Update active button state
     document.querySelectorAll('.layer-btn').forEach(btn => {
         if (btn.dataset.overlay === overlayType) {
             btn.classList.add('active');
@@ -110,8 +109,9 @@ async function fetchTemperatureData(forceRefresh = false) {
         const updateTimeStr = data.updated_at ? new Date(data.updated_at).toLocaleString('zh-TW') : "最新觀測";
         updateTimeElem.innerText = `CWA 更新時間: ${updateTimeStr}`;
 
-        renderStationMarkers();
+        renderVisualization();
         updateHottestStations();
+        updateTemperatureAlerts();
 
     } catch (err) {
         console.error("Failed to fetch CWA data:", err);
@@ -120,21 +120,40 @@ async function fetchTemperatureData(forceRefresh = false) {
 }
 
 /**
- * Render Leaflet Markers based on active filters
+ * Master Render Switcher (Markers vs Heatmap vs Cluster)
  */
-function renderStationMarkers() {
+function renderVisualization() {
+    // Clear previous layers
     stationLayerGroup.clearLayers();
+    if (heatmapLayer) {
+        map.removeLayer(heatmapLayer);
+        heatmapLayer = null;
+    }
+    if (clusterGroup) {
+        map.removeLayer(clusterGroup);
+        clusterGroup = null;
+    }
 
+    const filtered = getFilteredStations();
+
+    if (activeViewMode === "markers") {
+        renderStationMarkers(filtered);
+    } else if (activeViewMode === "heatmap") {
+        renderHeatmapLayer(filtered);
+    } else if (activeViewMode === "cluster") {
+        renderClusterLayer(filtered);
+    }
+}
+
+/**
+ * Filter Stations based on County and Search query
+ */
+function getFilteredStations() {
     const selectedCounty = document.getElementById("county-select").value;
     const searchQuery = document.getElementById("search-input").value.trim().toLowerCase();
-    const showLabels = document.getElementById("toggle-labels").checked;
 
-    const filtered = allStations.filter(st => {
-        // County Filter
-        if (selectedCounty !== "ALL" && st.county !== selectedCounty) {
-            return false;
-        }
-        // Search Filter
+    return allStations.filter(st => {
+        if (selectedCounty !== "ALL" && st.county !== selectedCounty) return false;
         if (searchQuery) {
             const matchName = st.station_name && st.station_name.toLowerCase().includes(searchQuery);
             const matchCounty = st.county && st.county.toLowerCase().includes(searchQuery);
@@ -143,12 +162,18 @@ function renderStationMarkers() {
         }
         return true;
     });
+}
+
+/**
+ * Mode 1: Render Markers Layer
+ */
+function renderStationMarkers(filtered) {
+    const showLabels = document.getElementById("toggle-labels").checked;
 
     filtered.forEach(st => {
         const color = colorByTemperature(st.temperature_c);
         const radius = getMarkerRadius(st.temperature_c);
 
-        // Circle Marker
         const marker = L.circleMarker([st.lat, st.lon], {
             radius: radius,
             fillColor: color,
@@ -157,7 +182,6 @@ function renderStationMarkers() {
             weight: 1.5
         });
 
-        // Optional numeric label above marker
         if (showLabels && map.getZoom() >= 9) {
             const labelIcon = L.divIcon({
                 className: 'custom-temp-marker',
@@ -168,25 +192,112 @@ function renderStationMarkers() {
             L.marker([st.lat, st.lon], { icon: labelIcon, interactive: false }).addTo(stationLayerGroup);
         }
 
-        // Popup Content
-        const obsTimeFormatted = st.observed_at ? new Date(st.observed_at).toLocaleString('zh-TW') : "即時";
-        const popupContent = `
-            <div class="popup-card">
-                <h4>${st.station_name} <small style="color:#aaa; font-weight:normal;">(${st.station_id})</small></h4>
-                <div class="location">📍 ${st.county || ''} ${st.town || ''}</div>
-                <div class="temp-large" style="color:${color};">${st.temperature_c} °C</div>
-                <div class="popup-grid">
-                    <div>💧 相對濕度: <strong>${st.humidity_percent !== null ? st.humidity_percent + '%' : 'N/A'}</strong></div>
-                    <div>💨 風速: <strong>${st.wind_speed_mps !== null ? st.wind_speed_mps + ' m/s' : 'N/A'}</strong></div>
-                    <div>🌧️ 累積雨量: <strong>${st.precipitation_mm !== null ? st.precipitation_mm + ' mm' : '0 mm'}</strong></div>
-                    <div>⏲️ 觀測時間: <strong>${obsTimeFormatted}</strong></div>
-                </div>
-            </div>
-        `;
-
-        marker.bindPopup(popupContent);
+        marker.bindPopup(buildPopupContent(st, color));
         marker.addTo(stationLayerGroup);
     });
+}
+
+/**
+ * Mode 2: Render Heatmap Layer
+ */
+function renderHeatmapLayer(filtered) {
+    if (typeof L.heatLayer !== 'function') return;
+
+    // Convert temperature °C to intensity (normalized 0.0 to 1.0)
+    const heatPoints = filtered.map(st => {
+        const intensity = Math.max(0.1, Math.min(1.0, (st.temperature_c - 10) / 25));
+        return [st.lat, st.lon, intensity];
+    });
+
+    heatmapLayer = L.heatLayer(heatPoints, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 12,
+        gradient: {
+            0.2: '#2b6cb0',
+            0.4: '#38a169',
+            0.6: '#ecc94b',
+            0.8: '#ed8936',
+            1.0: '#e53e3e'
+        }
+    }).addTo(map);
+}
+
+/**
+ * Mode 3: Render Cluster Layer
+ */
+function renderClusterLayer(filtered) {
+    if (typeof L.markerClusterGroup !== 'function') return;
+
+    clusterGroup = L.markerClusterGroup({
+        disableClusteringAtZoom: 12,
+        spiderfyOnMaxZoom: true
+    });
+
+    filtered.forEach(st => {
+        const color = colorByTemperature(st.temperature_c);
+        const radius = getMarkerRadius(st.temperature_c);
+
+        const marker = L.circleMarker([st.lat, st.lon], {
+            radius: radius,
+            fillColor: color,
+            fillOpacity: 0.9,
+            color: "#ffffff",
+            weight: 1.5
+        });
+
+        marker.bindPopup(buildPopupContent(st, color));
+        clusterGroup.addLayer(marker);
+    });
+
+    map.addLayer(clusterGroup);
+}
+
+/**
+ * Build Popup Card HTML
+ */
+function buildPopupContent(st, color) {
+    const obsTimeFormatted = st.observed_at ? new Date(st.observed_at).toLocaleString('zh-TW') : "即時";
+    return `
+        <div class="popup-card">
+            <h4>${st.station_name} <small style="color:#aaa; font-weight:normal;">(${st.station_id})</small></h4>
+            <div class="location">📍 ${st.county || ''} ${st.town || ''}</div>
+            <div class="temp-large" style="color:${color};">${st.temperature_c} °C</div>
+            <div class="popup-grid">
+                <div>💧 相對濕度: <strong>${st.humidity_percent !== null ? st.humidity_percent + '%' : 'N/A'}</strong></div>
+                <div>💨 風速: <strong>${st.wind_speed_mps !== null ? st.wind_speed_mps + ' m/s' : 'N/A'}</strong></div>
+                <div>🌧️ 累積雨量: <strong>${st.precipitation_mm !== null ? st.precipitation_mm + ' mm' : '0 mm'}</strong></div>
+                <div>⏲️ 觀測時間: <strong>${obsTimeFormatted}</strong></div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Update Extreme Temperature Alerts Warning Box
+ */
+function updateTemperatureAlerts() {
+    const alertBoxContent = document.getElementById("alert-content");
+    if (!allStations.length) return;
+
+    const extremeHot = allStations.filter(st => st.temperature_c >= 33.0);
+    const extremeCold = allStations.filter(st => st.temperature_c <= 15.0);
+
+    let html = "";
+    if (extremeHot.length > 0) {
+        html += `<div style="color:#ef4444; font-weight:bold; margin-bottom:4px;">🔥 極端高溫特報 (${extremeHot.length}測站 ≥ 33°C):</div>`;
+        html += extremeHot.slice(0, 3).map(st => `• ${st.county}${st.station_name}: <span style="color:#ef4444;">${st.temperature_c}°C</span>`).join('<br>');
+    }
+    if (extremeCold.length > 0) {
+        if (html) html += "<br>";
+        html += `<div style="color:#3b82f6; font-weight:bold; margin-top:4px; margin-bottom:4px;">❄️ 低溫特報 (${extremeCold.length}測站 ≤ 15°C):</div>`;
+        html += extremeCold.slice(0, 3).map(st => `• ${st.county}${st.station_name}: <span style="color:#3b82f6;">${st.temperature_c}°C</span>`).join('<br>');
+    }
+    if (!html) {
+        html = `<div style="color:#10b981;">✅ 目前全台各氣象站溫濕度指標皆在正常氣候範圍內。</div>`;
+    }
+
+    alertBoxContent.innerHTML = html;
 }
 
 /**
@@ -209,11 +320,20 @@ function updateHottestStations() {
  * Attach UI Event Listeners
  */
 function setupEventListeners() {
-    document.getElementById("county-select").addEventListener("change", renderStationMarkers);
-    document.getElementById("search-input").addEventListener("input", renderStationMarkers);
-    document.getElementById("toggle-labels").addEventListener("change", renderStationMarkers);
-
+    document.getElementById("county-select").addEventListener("change", renderVisualization);
+    document.getElementById("search-input").addEventListener("input", renderVisualization);
+    document.getElementById("toggle-labels").addEventListener("change", renderVisualization);
     document.getElementById("refresh-btn").addEventListener("click", () => fetchTemperatureData(true));
+
+    // View Mode Switcher Buttons
+    document.querySelectorAll('.view-mode-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            activeViewMode = e.currentTarget.dataset.mode;
+            document.querySelectorAll('.view-mode-btn').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            renderVisualization();
+        });
+    });
 
     // Layer Switcher Buttons
     document.querySelectorAll('.layer-btn').forEach(btn => {
@@ -221,6 +341,11 @@ function setupEventListeners() {
             const overlayType = e.currentTarget.dataset.overlay;
             switchWeatherOverlay(overlayType);
         });
+    });
+
+    // Sidebar RWD Toggle
+    document.getElementById("toggle-sidebar-btn").addEventListener("click", () => {
+        document.getElementById("sidebar").classList.toggle("collapsed");
     });
 
     // Auto Refresh Toggle
@@ -234,14 +359,11 @@ function setupEventListeners() {
     });
 
     startAutoRefresh();
-
-    // Map Zoom Event
-    map.on('zoomend', renderStationMarkers);
+    map.on('zoomend', renderVisualization);
 }
 
 function startAutoRefresh() {
     stopAutoRefresh();
-    // 5 minutes interval = 300,000 ms
     autoRefreshTimer = setInterval(() => fetchTemperatureData(false), 300000);
 }
 

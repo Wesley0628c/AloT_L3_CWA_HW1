@@ -98,6 +98,28 @@ class TemperatureService:
             "features": features
         }
 
+    async def export_csv(self) -> str:
+        data = await self.get_latest_stations()
+        stations = data.get("stations", [])
+
+        lines = ["station_id,station_name,county,town,lat,lon,temperature_c,humidity_percent,wind_speed_mps,precipitation_mm,observed_at"]
+        for st in stations:
+            st_id = st.get("station_id", "")
+            name = st.get("station_name", "")
+            county = st.get("county", "") or ""
+            town = st.get("town", "") or ""
+            lat = st.get("lat", "")
+            lon = st.get("lon", "")
+            temp = st.get("temperature_c", "")
+            hum = st.get("humidity_percent", "")
+            wind = st.get("wind_speed_mps", "")
+            precip = st.get("precipitation_mm", "")
+            obs = st.get("observed_at", "")
+
+            lines.append(f'"{st_id}","{name}","{county}","{town}",{lat},{lon},{temp},{hum},{wind},{precip},"{obs}"')
+
+        return "\n".join(lines)
+
     def _parse_station(self, raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         try:
             station_id = raw.get("StationId") or raw.get("stationId")
