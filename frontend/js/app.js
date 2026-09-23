@@ -10,24 +10,24 @@ let activeOverlay = "wind";
 // Weather Tile Overlay URLs
 const WEATHER_TILE_LAYERS = {
     wind: {
-        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        overlayUrl: 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1', // Fallback wind tile
-        attribution: '&copy; OpenStreetMap & Weather Layers'
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        overlayUrl: 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
+        attribution: '&copy; Esri & OpenWeatherMap'
     },
     temp: {
-        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         overlayUrl: 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
-        attribution: '&copy; CARTO & CWA Temperature'
+        attribution: '&copy; Esri & CWA Temperature'
     },
     rain: {
-        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         overlayUrl: 'https://tile.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/1/1_1.png',
-        attribution: '&copy; RainViewer Radar & CARTO'
+        attribution: '&copy; RainViewer Radar & Esri'
     },
     clouds: {
-        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         overlayUrl: 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=b1b15e88fa797225412429c1c50c122a1',
-        attribution: '&copy; OpenWeatherMap Clouds & CARTO'
+        attribution: '&copy; OpenWeatherMap Clouds & Esri'
     }
 };
 
@@ -48,11 +48,10 @@ function initMap() {
         zoomControl: true
     });
 
-    // Default Base Dark Tile
-    baseTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors & CARTO',
-        subdomains: 'abcd',
-        maxZoom: 19
+    // Default Base Dark Tile (Esri World Dark Gray Canvas - Clean & Watermark-Free)
+    baseTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+        maxZoom: 16
     }).addTo(map);
 
     stationLayerGroup = L.layerGroup().addTo(map);
