@@ -1,7 +1,9 @@
+import {staticJson} from './static-api.js';
 export const $ = id => document.getElementById(id);
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const formatTime = value => value ? new Date(value).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}) : '尚無資料';
 export async function getJson(path) {
+    if (window.CWA_STATIC) return staticJson(path);
     const response = await fetch(path,{signal:AbortSignal.timeout(90000)});
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();

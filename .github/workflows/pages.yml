@@ -1,0 +1,48 @@
+name: Publish weather map
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: weather-pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest tests -q
+      - uses: actions/cache@v4
+        with:
+          path: |
+            data/weather.db
+            data/cache
+          key: weather-pages-v1-${{ github.run_id }}
+          restore-keys: weather-pages-v1-
+      - name: Export public weather snapshot
+        run: python scripts/build_pages.py
+        env:
+          CWA_API_KEY: ${{ secrets.CWA_API_KEY }}
+          BACKGROUND_REFRESH: 'false'
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

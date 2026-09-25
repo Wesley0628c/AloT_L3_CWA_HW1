@@ -1,5 +1,9 @@
 # AloT_L3_CWA_HW1
 
+① **GitHub Repository:** https://github.com/Wesley0628c/AloT_L3_CWA_HW1
+
+② **Live Website:** https://wesley0628c.github.io/AloT_L3_CWA_HW1/
+
 台灣即時氣象地圖，整合中央氣象署測站、雨量、雷達、颱風、警特報與六區一週預報，並提供 NOAA GFS 風場模型。介面以 [taiwan-weather-map.vercel.app](https://taiwan-weather-map.vercel.app) 的全螢幕地圖、浮動摘要與圖層控制方式為參考。
 
 所有外部來源先以 probe 驗證 HTTP、資料格式、圖片或 GRIB 解碼；只啟用已驗證的功能。網站直接使用官方／供應者來源，不依賴參考網站的私人後端。
@@ -200,4 +204,6 @@ python -m pytest tests -q
 
 [驗證紀錄](docs/validation.md)包含瀏覽器實測範圍。更多內容：[架構](docs/architecture.md)、[API 路徑](docs/api.md)、[進度](docs/roadmap.md)。GitHub Actions 執行離線後端測試與前端模組語法檢查。
 
-GitHub 儲存庫負責版本管理，不會自動部署公開網站；FastAPI 需要持續運作的 Python 服務及持久化磁碟。本版未整合 Redis 或 PostgreSQL，採單程序 SQLite 部署。
+公開版由 GitHub Actions 約每 10 分鐘抓取資料並發布到 GitHub Pages；排程可能延遲。公開頁面的重新整理只讀取最近發布的快照，不會直接呼叫 CWA。離開電腦或關機後仍可開啟。
+
+本機版維持 FastAPI＋SQLite；公開版使用相同介面及已匯出的氣象資料，SQL 在瀏覽器 Worker 查詢僅含 `WeeklyForecasts` 的資料庫，最多 500 筆。歷史最多公開 168 份最近七天快照；Actions 快取被清除時會重新累積。設定方式見 [公開部署](docs/deployment.md)。
