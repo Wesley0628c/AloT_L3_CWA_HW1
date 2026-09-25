@@ -6,6 +6,8 @@
 
 ![台灣氣象地圖](assets/preview.png)
 
+[查看各功能電腦版截圖](#電腦版功能截圖)
+
 ## 快速啟動
 
 建議 Python 3.11+。從專案根目錄執行：
@@ -89,6 +91,82 @@ AloT_L3_CWA_HW1/
 **已取消**：未取得有效授權並完成驗證的 Windy 分支，以及原先名稱與資料不符的海圖「風場」。本版沒有假氣象圖層或等待使用者補 key 的空按鈕。
 
 氣溫等圓點與標籤表示實際測站值，沒有將測站值冒充連續氣象模型。GFS 粒子動畫是加速視覺化，並非實際物件移動軌跡；箭頭表示風吹往的方向，Popup 另列氣象風向的來向角度。颱風圈只使用官方提供的半徑，不自行捏造預測錐。
+
+## 電腦版功能截圖
+
+以下為電腦版實際操作畫面，資料以截圖當下為準。
+
+### 氣溫總覽與天氣特報
+
+![氣溫總覽與天氣特報](assets/features/01-overview.png)
+
+### 一週預報
+
+![一週預報](assets/features/forecast-chart.png)
+
+### 六區預報表格與 CSV 下載
+
+![六區預報表格與 CSV 下載](assets/features/forecast-table-csv.png)
+
+### 雨量
+
+![雨量](assets/features/layer-rainfall.png)
+
+### 即時雷達
+
+![即時雷達](assets/features/radar-current.png)
+
+### 雷達歷程
+
+![雷達歷程](assets/features/radar-history.png)
+
+### 颱風路徑與預報
+
+![颱風路徑與預報](assets/features/typhoon.png)
+
+### 風速風向
+
+![風速風向](assets/features/layer-wind.png)
+
+### 濕度
+
+![濕度](assets/features/layer-humidity.png)
+
+### 天氣
+
+![天氣](assets/features/layer-weather.png)
+
+### 測站點位
+
+![測站點位](assets/features/layer-stations.png)
+
+### 測站詳細資料
+
+![測站詳細資料](assets/features/station-details.png)
+
+### 縣市篩選與測站搜尋
+
+![縣市篩選與測站搜尋](assets/features/station-filter.png)
+
+### 觀測 CSV 下載與自動刷新
+
+![觀測 CSV 下載與自動刷新](assets/features/data-tools.png)
+
+### 歷史觀測
+
+![歷史觀測](assets/features/observation-history.png)
+
+### 唯讀 SQL 查詢
+
+![唯讀 SQL 查詢](assets/features/sql-query.png)
+
+### 街道底圖
+
+![街道底圖](assets/features/street-map.png)
+
+### 數字標籤與縣市界線切換
+
+![數字標籤與縣市界線切換](assets/features/map-controls.png)
 
 ## API probe
 
